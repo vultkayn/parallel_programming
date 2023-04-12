@@ -1,0 +1,28 @@
+{
+    "files.associations": {
+        "quat": "c",
+        "vec4b": "c",
+        "vec4d": "c",
+        "vec4f": "c",
+        "vec4i": "c",
+        "vec4s": "c",
+        "vec4ub": "c",
+        "vec4ui": "c",
+        "vec4us": "c",
+        "random": "c",
+        "boundingbox": "c",
+        "boundingsphere": "c",
+        "vec2b": "c",
+        "vec2i": "c",
+        "vec2s": "c",
+        "vec2ub": "c",
+        "vec2ui": "c",
+        "vec2us": "c",
+        "vec3b": "c",
+        "vec3i": "c",
+        "vec3s": "c",
+        "vec3ub": "c",
+        "vec3ui": "c",
+        "vec3us": "c"
+    }
+}
