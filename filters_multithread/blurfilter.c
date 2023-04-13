@@ -11,6 +11,8 @@
 #include "blurfilter.h"
 #include "ppmio.h"
 
+#define NTHREADS 5
+
 pixel* pix(pixel* image, const int xx, const int yy, const int xsize)
 {
 	int off = xsize*yy + xx;
@@ -19,23 +21,21 @@ pixel* pix(pixel* image, const int xx, const int yy, const int xsize)
 
 int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, const double *w)
 {
-	int part = 6;
-
-	if(part>1){
+	if(NTHREADS>1){
 		printf("Filtering with multiple threads.\n");
 	}
 	else{
 		printf("Sequential execution.\n");
 	}
 	
-	pthread_t thread[part];
+	pthread_t thread[NTHREADS];
 	pixel *dst = (pixel*) malloc(sizeof(pixel)*xsize*ysize);
-	int* partition = (int*) malloc(sizeof(int)*(part+1));
-	Arguments *args = (Arguments*) malloc(sizeof(Arguments)*part);
+	int* NTHREADSition = (int*) malloc(sizeof(int)*(NTHREADS+1));
+	Arguments *args = (Arguments*) malloc(sizeof(Arguments)*NTHREADS);
 
-	set_domain(partition,ysize,part);
+	set_domain(NTHREADSition,ysize);
 
-	for (int p=0;p<part;p++)
+	for (int p=0;p<NTHREADS;p++)
 	{
 		args[p].xsize = xsize;
 		args[p].ysize = ysize;
@@ -43,8 +43,8 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 		args[p].radius = radius;
 		args[p].w = w;
 		args[p].dst = dst;
-		args[p].vmin = partition[p];
-		args[p].vmax = partition[p+1];
+		args[p].vmin = NTHREADSition[p];
+		args[p].vmax = NTHREADSition[p+1];
 		
 		if(pthread_create(&thread[p], NULL, &row_processing, (void*) &args[p]) != 0)
 		{
@@ -53,11 +53,11 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 		}	
 	}
 
-	wait_threads(thread,part);
+	wait_threads(thread);
 
-	set_domain(partition,xsize,part);
+	set_domain(NTHREADSition,xsize);
 
-	for (int p=0;p<part;p++)
+	for (int p=0;p<NTHREADS;p++)
 	{
 		args[p].xsize = xsize;
 		args[p].ysize = ysize;
@@ -65,8 +65,8 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 		args[p].radius = radius;
 		args[p].w = w;
 		args[p].dst = dst;
-		args[p].vmin = partition[p];
-		args[p].vmax = partition[p+1];
+		args[p].vmin = NTHREADSition[p];
+		args[p].vmax = NTHREADSition[p+1];
 		
 		if(pthread_create(&thread[p], NULL, &column_processing, (void*) &args[p]) != 0)
 		{
@@ -75,18 +75,18 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 		}		
 	}
 
-	wait_threads(thread,part);
+	wait_threads(thread);
 
-	free(partition);
+	free(NTHREADSition);
 	free(args);
 	free(dst);
 
 	return 0;
 }
 
-void wait_threads(pthread_t* thread, const int part)
+void wait_threads(pthread_t* thread)
 {
-	for (int p=0;p<part;p++)
+	for (int p=0;p<NTHREADS;p++)
 	{
 		if(pthread_join(thread[p],NULL) != 0){
 			exit(1);
@@ -94,15 +94,15 @@ void wait_threads(pthread_t* thread, const int part)
 	}
 }
 
-void set_domain(int* partition, const int size, const int part)
+void set_domain(int* NTHREADSition, const int size)
 {
-	int step = floor(size/part);
-	partition[0] = 0;
-	partition[part] = size;
+	int step = floor(size/NTHREADS);
+	NTHREADSition[0] = 0;
+	NTHREADSition[NTHREADS] = size;
 
-	for(int k=1;k<part;k++)
+	for(int k=1;k<NTHREADS;k++)
 	{ 
-		partition[k] = step*k;
+		NTHREADSition[k] = step*k;
 	}
 }
 

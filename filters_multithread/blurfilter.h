@@ -26,8 +26,8 @@ struct Arguments {
 
 
 int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, const double *w);
-void set_domain(int* partition, const int size, const int part);
-void wait_threads(pthread_t* thread, const int part);
+void set_domain(int* partition, const int size);
+void wait_threads(pthread_t* thread);
 void* row_processing(void *args);
 void* column_processing(void *args);
 

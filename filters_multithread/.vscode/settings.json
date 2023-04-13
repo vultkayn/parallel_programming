@@ -24,5 +24,6 @@
         "vec3ub": "c",
         "vec3ui": "c",
         "vec3us": "c"
-    }
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
 }
