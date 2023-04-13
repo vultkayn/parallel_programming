@@ -145,7 +145,7 @@ void* column_processing(void* data)
 
 	int step = floor(args->xsize/NTHREADS);
 	args->vmin = step * args->tid;
-	args->vmax = step * (args->tid+1);
+	args->vmax = (args->tid+1 == NTHREADS) ? args->xsize : step * (args->tid+1);
 
 	for (int x=args->vmin; x < args->vmax; x++)
 	{
