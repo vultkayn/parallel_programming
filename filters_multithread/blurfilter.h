@@ -13,16 +13,17 @@ typedef struct _pixel {
 	unsigned char r,g,b;
 } pixel;
 
-struct Arguments {
+typedef struct Arguments {
+  pixel* src;
+  const double* w;
+  pixel* dst;
   int xsize;
   int ysize;
   int vmin;
   int vmax;
-  pixel* src;
   int radius;
-  const double* w;
-  pixel* dst;
-}; typedef struct Arguments Arguments;
+  unsigned tid;
+} Arguments;
 
 
 int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, const double *w);

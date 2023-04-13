@@ -1,0 +1,5 @@
+.vscode/
+blurc
+output/
+thresh.c
+*.o
