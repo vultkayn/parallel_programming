@@ -33,10 +33,10 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 
 
 	if(nextra_threads>1){
-		printf("Filtering with multiple threads.\n");
+		printf("Filtering with %d threads.\n", NTHREADS);
 	}
 	else{
-		printf("Sequential execution.\n");
+		puts("Sequential execution.");
 	}
 	
 	pthread_t thread[nextra_threads];
