@@ -1,18 +1,30 @@
 #include "thresfilter.h"
 
+#ifndef NTHREADS
+#define NTHREADS 1
+#endif
+
+unsigned waiting_threads = 0;
+pthread_mutex_t waiting_mtx;
+pthread_cond_t cond_var;
+
+uint threshold = 0;
+
+void barrier(Arguments* args);
+
 int thresfilter(const int xsize, const int ysize, pixel* src)
 {
 	uint i, nump;
 	nump = xsize * ysize;
 	
 	
-	int part = 6;
+	int part = NTHREADS;
 
 	if(part>1){
-		printf("Filtering with multiple threads.\n");
+		printf("Filtering with %d threads.\n", NTHREADS);
 	}
 	else{
-		printf("Sequential execution.\n");
+		puts("Sequential execution.");
 	}
 
 	pthread_t thread[part];
@@ -22,14 +34,13 @@ int thresfilter(const int xsize, const int ysize, pixel* src)
 
 	set_domain(partition,nump,part);
 	
-	for(int p=0;p<part;p++)
+	for(uint p=0;p<part;p++)
 	{
 		args[p].sum = &sum[p];
 		args[p].nump = nump;
 		args[p].vmin = partition[p];
 		args[p].vmax = partition[p+1];
 		args[p].src = src;
-		args[p].threshold = 0;
 
 		if(pthread_create(&thread[p], NULL, &threshold_computing, (void*) &args[p]) != 0)
 		{
@@ -40,34 +51,6 @@ int thresfilter(const int xsize, const int ysize, pixel* src)
 
 	wait_threads(thread,part);
 
-	uint threshold = 0;
-		
-	for(int p=0;p<part;p++)
-	{
-		threshold += sum[p];
-	}	
-
-	threshold /= nump;
-	
-	for(int p=0;p<part;p++)
-	{
-		args[p].sum = &sum[p];
-		args[p].nump = nump;
-		args[p].vmin = partition[p];
-		args[p].vmax = partition[p+1];
-		args[p].threshold = threshold;
-
-		// threshold_processing(&args[p]);
-
-		if(pthread_create(&thread[p], NULL, &threshold_processing, (void*) &args[p]) != 0)
-		{
-			perror("Failed to create the threads.\n");
-			return 1;
-		}
-	}
-
-	wait_threads(thread,part);
-
 	free(partition);
 	free(args);
 }
@@ -75,10 +58,11 @@ int thresfilter(const int xsize, const int ysize, pixel* src)
 void* threshold_processing(void* args)
 {
 	uint psum;
-	for (int i = 0; i < ((Arguments*)args)->nump; i++)
+	// for (int i = 0; i < ((Arguments*)args)->nump; i++)
+	for (int i = ((Arguments*)args)->vmin; i < ((Arguments*)args)->vmax; i++)
 	{
 		psum = (uint)(((Arguments*)args)->src[i].r) + (uint)(((Arguments*)args)->src[i].g) + (uint)(((Arguments*)args)->src[i].b);
-		if (((Arguments*)args)->threshold > psum)
+		if (threshold > psum)
 		{
 			((Arguments*)args)->src[i].r = ((Arguments*)args)->src[i].g = ((Arguments*)args)->src[i].b = 0;
 		}
@@ -96,6 +80,9 @@ void* threshold_computing(void* args)
 	{
 		*(((Arguments*)args)->sum) += (uint)(((Arguments*)args)->src[i].r) + (uint)(((Arguments*)args)->src[i].g) + (uint)(((Arguments*)args)->src[i].b);
 	}
+	barrier((Arguments *) args);
+
+	threshold_processing(args);
 }
 
 void wait_threads(pthread_t* thread, const int part)
@@ -106,6 +93,23 @@ void wait_threads(pthread_t* thread, const int part)
 			exit(1);
 		}
 	}
+}
+
+void barrier(Arguments* args)
+{
+	pthread_mutex_lock(&waiting_mtx);
+	waiting_threads++;
+	if(waiting_threads != NTHREADS) {
+		threshold += *args->sum;
+		pthread_cond_wait(&cond_var, &waiting_mtx);
+	}
+	else { // last to arrive will be the only one to run the else
+		threshold += *args->sum;
+		threshold /= args->nump;
+	}
+
+	pthread_cond_signal(&cond_var);
+	pthread_mutex_unlock(&waiting_mtx);
 }
 
 void set_domain(int* partition, const int size, const int part)
