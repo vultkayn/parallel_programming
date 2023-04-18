@@ -10,31 +10,28 @@ pthread_cond_t cond_var;
 
 uint threshold = 0;
 
-void barrier(Arguments* args);
-
 int thresfilter(const int xsize, const int ysize, pixel* src)
 {
 	uint i, nump;
 	nump = xsize * ysize;
 	
-	
-	int part = NTHREADS;
+	int nextra_threads = NTHREADS;
 
-	if(part>1){
+	if(nextra_threads>1){
 		printf("Filtering with %d threads.\n", NTHREADS);
 	}
 	else{
 		puts("Sequential execution.");
 	}
 
-	pthread_t thread[part];
-	int* partition = (int*) malloc(sizeof(int)*(part+1));
-	Arguments *args = (Arguments*) malloc(sizeof(Arguments)*part);
-	uint* sum = (uint*)malloc(sizeof(uint)*part);
+	pthread_t thread[nextra_threads];
+	int* partition = (int*) malloc(sizeof(int)*(nextra_threads+1));
+	Arguments *args = (Arguments*) malloc(sizeof(Arguments)*nextra_threads);
+	uint* sum = (uint*)malloc(sizeof(uint)*nextra_threads);
 
-	set_domain(partition,nump,part);
+	set_domain(partition,nump,nextra_threads);
 	
-	for(uint p=0;p<part;p++)
+	for(uint p=0;p<nextra_threads;p++)
 	{
 		args[p].sum = &sum[p];
 		args[p].nump = nump;
@@ -42,23 +39,22 @@ int thresfilter(const int xsize, const int ysize, pixel* src)
 		args[p].vmax = partition[p+1];
 		args[p].src = src;
 
-		if(pthread_create(&thread[p], NULL, &threshold_computing, (void*) &args[p]) != 0)
+		if(pthread_create(&thread[p], NULL, &threshold_value, (void*) &args[p]) != 0)
 		{
 			perror("Failed to create the threads.\n");
 			return 1;
 		}
 	}	
 
-	wait_threads(thread,part);
+	wait_threads(thread,nextra_threads);
 
 	free(partition);
 	free(args);
 }
 
-void* threshold_processing(void* args)
+void* output(void* args)
 {
 	uint psum;
-	// for (int i = 0; i < ((Arguments*)args)->nump; i++)
 	for (int i = ((Arguments*)args)->vmin; i < ((Arguments*)args)->vmax; i++)
 	{
 		psum = (uint)(((Arguments*)args)->src[i].r) + (uint)(((Arguments*)args)->src[i].g) + (uint)(((Arguments*)args)->src[i].b);
@@ -73,21 +69,23 @@ void* threshold_processing(void* args)
 	}
 }
 
-void* threshold_computing(void* args)
+void* threshold_value(void* args)
 {
 	*(((Arguments*)args)->sum) = 0;
+
 	for (int i = ((Arguments*)args)->vmin; i < ((Arguments*)args)->vmax; i++)
 	{
 		*(((Arguments*)args)->sum) += (uint)(((Arguments*)args)->src[i].r) + (uint)(((Arguments*)args)->src[i].g) + (uint)(((Arguments*)args)->src[i].b);
 	}
+
 	barrier((Arguments *) args);
 
-	threshold_processing(args);
+	output(args);
 }
 
-void wait_threads(pthread_t* thread, const int part)
+void wait_threads(pthread_t* thread, const int nextra_threads)
 {
-	for (int p=0;p<part;p++)
+	for (int p=0;p<nextra_threads;p++)
 	{
 		if(pthread_join(thread[p],NULL) != 0){
 			exit(1);
@@ -99,6 +97,7 @@ void barrier(Arguments* args)
 {
 	pthread_mutex_lock(&waiting_mtx);
 	waiting_threads++;
+
 	if(waiting_threads != NTHREADS) {
 		threshold += *args->sum;
 		pthread_cond_wait(&cond_var, &waiting_mtx);
@@ -112,13 +111,13 @@ void barrier(Arguments* args)
 	pthread_mutex_unlock(&waiting_mtx);
 }
 
-void set_domain(int* partition, const int size, const int part)
+void set_domain(int* partition, const int size, const int nextra_threads)
 {
-	int step = floor(size/part);
+	int step = floor(size/nextra_threads);
 	partition[0] = 0;
-	partition[part] = size;
+	partition[nextra_threads] = size;
 
-	for(int k=1;k<part;k++)
+	for(int k=1;k<nextra_threads;k++)
 	{ 
 		partition[k] = step*k;
 	}

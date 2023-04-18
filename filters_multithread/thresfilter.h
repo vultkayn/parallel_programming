@@ -28,9 +28,10 @@ struct Arguments {
 }; typedef struct Arguments Arguments;
 
 int thresfilter(const int xsize, const int ysize, pixel* src);
-void* threshold_processing(void* args);
+void* output(void* args);
 void set_domain(int* partition, const int size, const int part);
 void wait_threads(pthread_t* thread, const int part);
-void* threshold_computing(void* args);
+void* threshold_value(void* args);
+void barrier(Arguments* args);
 
 #endif

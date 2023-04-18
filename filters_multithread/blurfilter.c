@@ -31,7 +31,6 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 	pthread_cond_init(&cond_var, NULL);
 	pthread_mutex_init(&waiting_mtx, NULL);
 
-
 	if(nextra_threads>1){
 		printf("Filtering with %d threads.\n", NTHREADS);
 	}
@@ -85,7 +84,6 @@ void barrier()
 	pthread_cond_signal(&cond_var);
 	pthread_mutex_unlock(&waiting_mtx);
 }
-
 
 void* row_processing(void* data)
 {
