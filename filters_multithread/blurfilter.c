@@ -92,7 +92,8 @@ void* row_processing(void* data)
 	Arguments *args = (Arguments *) data;
 	int step = floor(args->ysize/NTHREADS);
 	args->vmin = step * args->tid;
-	args->vmax = step * (args->tid+1);
+	// args->vmax = step * (args->tid+1);
+	args->vmax = (args->tid+1 == NTHREADS) ? args->ysize : step * (args->tid+1);
 
 	for (int y=(args->vmin); y<args->vmax; y++)
 	{
