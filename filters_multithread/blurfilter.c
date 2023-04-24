@@ -31,7 +31,6 @@ int blurfilter(const int xsize, const int ysize, pixel* src, const int radius, c
 	pthread_cond_init(&cond_var, NULL);
 	pthread_mutex_init(&waiting_mtx, NULL);
 
-
 	if(nextra_threads>1){
 		printf("Filtering with %d threads.\n", NTHREADS);
 	}
@@ -86,7 +85,6 @@ void barrier()
 	pthread_mutex_unlock(&waiting_mtx);
 }
 
-
 void* row_processing(void* data)
 {
 	int x2, wi;
@@ -94,7 +92,8 @@ void* row_processing(void* data)
 	Arguments *args = (Arguments *) data;
 	int step = floor(args->ysize/NTHREADS);
 	args->vmin = step * args->tid;
-	args->vmax = step * (args->tid+1);
+	// args->vmax = step * (args->tid+1);
+	args->vmax = (args->tid+1 == NTHREADS) ? args->ysize : step * (args->tid+1);
 
 	for (int y=(args->vmin); y<args->vmax; y++)
 	{
