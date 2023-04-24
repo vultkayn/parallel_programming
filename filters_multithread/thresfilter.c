@@ -51,6 +51,9 @@ int thresfilter(const int xsize, const int ysize, pixel* src)
 
 	wait_threads(thread,part);
 
+	pthread_mutex_destroy(&waiting_mtx);
+	pthread_cond_destroy(&cond_var);
+
 	free(partition);
 	free(args);
 }
