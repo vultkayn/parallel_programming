@@ -74,7 +74,7 @@ int main (int argc, char ** argv)
 		
 		printf("Calling filter\n");
 
-		clock_gettime(CLOCK_REALTIME, &stime);
+		// clock_gettime(CLOCK_REALTIME, &stime);
 		stime = MPI_Wtime();
 	}
 
