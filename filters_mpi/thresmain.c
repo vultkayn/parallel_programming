@@ -19,7 +19,8 @@ int main (int argc, char ** argv)
 	
 	int xsize, ysize;
 	pixel *src = (pixel*) malloc(sizeof(pixel) * MAX_PIXELS);
-	struct timespec stime, etime;
+	// struct timespec stime, etime;
+	double stime, etime;
 
 	if(world_rank==0)
 	{
@@ -44,7 +45,9 @@ int main (int argc, char ** argv)
 	
 		printf("Has read the image, calling filter\n");
 
-		clock_gettime(CLOCK_REALTIME, &stime);
+
+		// clock_gettime(CLOCK_REALTIME, &stime);
+		stime = MPI_Wtime();
 	}
 
 	MPI_Bcast(&xsize,1,MPI_INT,0,MPI_COMM_WORLD);
@@ -54,9 +57,10 @@ int main (int argc, char ** argv)
 
 	if(world_rank==0)
 	{		
-		clock_gettime(CLOCK_REALTIME, &etime);
+		// clock_gettime(CLOCK_REALTIME, &etime);
+		etime = MPI_Wtime();
 	
-		printf("Filtering took: %g secs\n", (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec - stime.tv_nsec)) ;
+		printf("Filtering took: %g secs\n", (etime - stime));
 	
 		/* Write result */
 		if (write_ppm(argv[2], xsize, ysize, (char *)src) != 0)
