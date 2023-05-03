@@ -72,7 +72,7 @@ double compute_region (
 	// Copy to temp buffers
 	arrcpy(tmp1, &T[beg_row][beg_col + 1], rectw);
 
-	printf("thrd: %d, (rectw, recth): (%d,%d), beg_row: %d, beg_col: %d\n", thrd, rectw, recth, beg_row, beg_col);
+	// printf("thrd: %d, (rectw, recth): (%d,%d), beg_row: %d, beg_col: %d\n", thrd, rectw, recth, beg_row, beg_col);
 
 	// Loop for each of this thread's rows
 	for (int i = beg_row + 1; i <= beg_row + recth; ++i)
@@ -87,23 +87,31 @@ double compute_region (
 		{
 			assert(j <= n && "j > n");
 			assert(j >= 1 && "j < 0");
-			double next = (prev + T[i][j+1] + T[i+1][j] + tmp1[j-1]) / 4.0;
+			double next = (prev + T[i][j+1] + T[i+1][j] + tmp1[j-(beg_col + 1)]) / 4.0;
 			prev = T[i][j];
+			short border = 0;
 			if (j == beg_col + 1) {
 				left[i - (beg_row+1)] = next;
+				border = 1;
 			}
 			else if (j == beg_col + rectw) {
 				right[i - (beg_row+1)] = next;
-			} else
-				T[i][j] = next;
-
-			error = fmax(error, fabs(tmp2[j-1] - next));
+				border = 1;
+			}
 
 			if (i == beg_row + 1) {
 				top[j - (beg_col+1)] = next;
+				border = 1;
 			} else if (i == beg_row + recth) {
 				bot[j - (beg_col+1)] = next;
+				border = 1;
 			}
+
+			if (!border)
+				T[i][j] = next;
+
+			error = fmax(error, fabs(tmp2[j-(beg_col + 1)] - next));
+
 		}
 		
 		arrcpy(tmp1, tmp2, rectw);
