@@ -90,23 +90,21 @@ double compute_region (
 			double next = (prev + T[i][j+1] + T[i+1][j] + tmp1[j-1]) / 4.0;
 			prev = T[i][j];
 			if (j == beg_col + 1) {
-				left[i] = next;
+				left[i - (beg_row+1)] = next;
 			}
 			else if (j == beg_col + recth) {
-				right[i] = next;
+				right[i - (beg_row+1)] = next;
 			} else
 				T[i][j] = next;
 			error = fmax(error, fabs(tmp2[j-1] - next));
+			if (i == beg_row + 1) {
+				top[j - (beg_col+1)] = next;
+			} else if (i == beg_row + rectw) {
+				bot[j - (beg_col+1)] = next;
+			}
 		}
 		
 		arrcpy(tmp1, tmp2, rectw);
-		if (i == beg_row + 1) {
-			arrcpy(top, tmp2, rectw);
-			
-		}
-		if (i == beg_row + recth) {
-			arrcpy(bot, tmp2, rectw);
-		}
 	}
 
 	return error;
@@ -129,8 +127,8 @@ void write_future_to_T (
 	arrcpy(&T[beg_row+recth][beg_col + 1], bot, rectw);
 
 	for (int i = beg_row + 1; i <= beg_row + recth; ++i) {
-		T[i][beg_col + 1] = left[i];
-		T[i][beg_col + rectw] = right[i];
+		T[i][beg_col + 1] = left[i- (beg_row+1)];
+		T[i][beg_col + rectw] = right[i- (beg_row+1)];
 	}
 }
 
