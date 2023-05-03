@@ -92,14 +92,16 @@ double compute_region (
 			if (j == beg_col + 1) {
 				left[i - (beg_row+1)] = next;
 			}
-			else if (j == beg_col + recth) {
+			else if (j == beg_col + rectw) {
 				right[i - (beg_row+1)] = next;
 			} else
 				T[i][j] = next;
+
 			error = fmax(error, fabs(tmp2[j-1] - next));
+
 			if (i == beg_row + 1) {
 				top[j - (beg_col+1)] = next;
-			} else if (i == beg_row + rectw) {
+			} else if (i == beg_row + recth) {
 				bot[j - (beg_col+1)] = next;
 			}
 		}
