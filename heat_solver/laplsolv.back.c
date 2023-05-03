@@ -82,13 +82,16 @@ void laplsolv(int n, int maxiter, double tol)
 			arrcpy(tmp2, &T[i][1], n);
 			
 			// Apply the Jacobi algorithm to each element in this row
+			double prev = T[i][0];
 			for (int j = 1; j <= n; ++j)
 			{
-				tmp3[j-1] = (T[i][j-1] + T[i][j+1] + T[i+1][j] + tmp1[j-1]) / 4.0;
-				error = fmax(error, fabs(tmp2[j-1] - tmp3[j-1]));
+				double next = (prev + T[i][j+1] + T[i+1][j] + tmp1[j-1]) / 4.0;
+				error = fmax(error, fabs(tmp2[j-1] - next));
+				prev = T[i][j];
+				T[i][j] = next;
 			}
 			
-			arrcpy(&T[i][1], tmp3, n);
+			// arrcpy(&T[i][1], tmp3, n);
 			arrcpy(tmp1, tmp2, n);
 		}
 		
@@ -101,6 +104,7 @@ void laplsolv(int n, int maxiter, double tol)
 	printf("Time: %f\n", timediff(&starttime, &endtime));
 	printf("Number of iterations: %d\n", k);
 	printf("Temperature of element T(1,1): %.17f\n", T[1][1]);
+	printm(n+2, T);
 }
 
 

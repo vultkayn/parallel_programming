@@ -10,9 +10,10 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <assert.h>
 #include <omp.h>
 
-#ifndef
+#ifndef NCOLS
 #define NCOLS 2
 #endif
 
@@ -56,8 +57,8 @@ double compute_region (
 	int thrd,
 	int rectw,
 	int recth,
-	double **T,
 	int n,
+	double T[n+2][n+2],
 	double *top,
 	double *bot,
 	double *left,
@@ -66,19 +67,26 @@ double compute_region (
 	double error = -INFINITY;
 	int beg_col = (thrd % NCOLS) * rectw; 
 	int beg_row = (thrd / NCOLS) * recth; 
-	double *tmp2 = bot;
+	double tmp2[rectw];
+	double tmp1[rectw];
 	// Copy to temp buffers
 	arrcpy(tmp1, &T[beg_row][beg_col + 1], rectw);
+
+	printf("thrd: %d, (rectw, recth): (%d,%d), beg_row: %d, beg_col: %d\n", thrd, rectw, recth, beg_row, beg_col);
 
 	// Loop for each of this thread's rows
 	for (int i = beg_row + 1; i <= beg_row + recth; ++i)
 	{
+		assert(i <= n && "i > n");
+		assert(i >= 1 && "i < 0");
 		arrcpy(tmp2, &T[i][beg_col + 1], rectw);
 		
 		// Apply the Jacobi algorithm to each element in this row
 		double prev = T[i][beg_col];
 		for (int j = beg_col + 1; j <= beg_col + rectw; ++j)
 		{
+			assert(j <= n && "j > n");
+			assert(j >= 1 && "j < 0");
 			double next = (prev + T[i][j+1] + T[i+1][j] + tmp1[j-1]) / 4.0;
 			prev = T[i][j];
 			if (j == beg_col + 1) {
@@ -94,7 +102,10 @@ double compute_region (
 		arrcpy(tmp1, tmp2, rectw);
 		if (i == beg_row + 1) {
 			arrcpy(top, tmp2, rectw);
-
+			
+		}
+		if (i == beg_row + recth) {
+			arrcpy(bot, tmp2, rectw);
 		}
 	}
 
@@ -104,7 +115,8 @@ double compute_region (
 void write_future_to_T (
 	int thrd,
 	int rectw, int recth,
-	double **T,
+	int n,
+	double T[n+2][n+2],
 	double *top,
 	double *bot,
 	double *left,
@@ -151,17 +163,17 @@ void laplsolv(int n, int maxiter, double tol)
 
 	// Solve the linear system of equations using the Jacobi method
 	int rectw = n / NCOLS;
-	int recth = NCOLS * n / (nthrds);
 	for (k = 0; k < maxiter; ++k)
 	{
 		double error = -INFINITY;
 		#pragma omp parallel shared(error, T, n)
 		{
+			int recth = NCOLS * n / (omp_get_num_threads());
 			double top[rectw], bot[rectw], left[recth], right[recth];
-			int local_error = compute_region (omp_get_thread_num(), rectw, recth, T, n, top, bot, left, right);
+			double local_error = compute_region (omp_get_thread_num(), rectw, recth, n, T, top, bot, left, right);
 			#pragma omp barrier
 			// all threads copy their saves to T
-			write_future_to_T (omp_get_thread_num(), rectw, recth, T, top, bot, left, right);
+			write_future_to_T (omp_get_thread_num(), rectw, recth, n, T, top, bot, left, right);
 			#pragma omp critical
 			{
 				error = (error > local_error) ? error : local_error;
@@ -177,6 +189,7 @@ void laplsolv(int n, int maxiter, double tol)
 	printf("Time: %f\n", timediff(&starttime, &endtime));
 	printf("Number of iterations: %d\n", k);
 	printf("Temperature of element T(1,1): %.17f\n", T[1][1]);
+	printm(n+2, T);
 }
 
 
