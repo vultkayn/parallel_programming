@@ -104,7 +104,9 @@ void laplsolv(int n, int maxiter, double tol)
 	printf("Time: %f\n", timediff(&starttime, &endtime));
 	printf("Number of iterations: %d\n", k);
 	printf("Temperature of element T(1,1): %.17f\n", T[1][1]);
+	#ifdef DEBUG
 	printm(n+2, T);
+	#endif
 }
 
 

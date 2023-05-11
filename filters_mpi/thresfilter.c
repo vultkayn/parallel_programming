@@ -31,6 +31,7 @@ void thresfilter(const int xsize, const int ysize, pixel* src, const int world_r
 	temp_sum = threshold_value(send_size, rcv);
 	
 	MPI_Reduce(&temp_sum, &sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	// do all reduce to save the broadcast.
 
 	if(world_rank==0)
 	{
