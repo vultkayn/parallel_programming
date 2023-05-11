@@ -2,13 +2,13 @@ CC = gcc
 LFLAGS = -fopenmp -lm
 
 laplsolv-f: laplsolv.f90
-	ifort $(CFLAGS) -fopenmp $^ -o $@
+	ifort -fopenmp $^ -o $@
 
 laplsolv: laplsolv.c
-	$(CC) $(CFLAGS) -std=c11 -fopenmp $^ -o $@ -lm
+	$(CC) -std=c11 $^ -o $@ $(LFLAGS) 
 	
 laplsolv-back: laplsolv.back.c
-	$(CC) $(CFLAGS) -std=c11 -fopenmp $^ -o $@ -lm
+	$(CC) -std=c11 $^ -o $@ $(LFLAGS) 
 
 clean:
 	-$(RM) laplsolv laplsolv-f laplsolv-back
