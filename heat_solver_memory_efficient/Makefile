@@ -1,5 +1,5 @@
 CC = gcc
-LFLAGS = -fopenmp -lm
+LFLAGS = -fopenmp -lm -lrt
 
 laplsolv-f: laplsolv.f90
 	ifort -fopenmp $^ -o $@
