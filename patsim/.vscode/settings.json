@@ -1,0 +1,18 @@
+{
+    "files.associations": {
+        "array": "c",
+        "hash_map": "c",
+        "bitset": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "ranges": "c",
+        "utility": "c",
+        "bufferobject": "c",
+        "image": "c",
+        "mixinvector": "c",
+        "texture": "c",
+        "vertexarraystate": "c",
+        "buffered_value": "c",
+        "fast_back_stack": "c"
+    }
+}
