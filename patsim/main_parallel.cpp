@@ -25,7 +25,8 @@ void generate_particules(Row &row, int rank, int world_size, float &top, float &
 	float height = BOX_VERT_SIZE / (float)world_size;
 	top = height * (float)rank;
 	bot = top + height;
-	for (int i = 0; i < INIT_NO_PARTICLES; i++)
+	int i;
+	for (i = 0; i < INIT_NO_PARTICLES; i++)
 	{
 		// initialize random position
 		pcord_t part;
@@ -63,14 +64,16 @@ TOTAL extra bytes:
 = sizeof(short)*(50N/W) + 2*sizeof(pointer)*(50N / 2W) + 2*sizeof(pcord_t) * (50N / 2W)
 */
 {
-	for (int p = 0; p < row.size(); p++)
+	int p;
+	for (p = 0; p < row.size(); p++)
 	{
 		auto &part{row[p]};
 		if (part.collide)
 			continue;
 
 		/* check for collisions */
-		for (unsigned pp = p + 1; pp < row.size(); pp++)
+		unsigned pp;
+		for (pp = p + 1; pp < row.size(); pp++)
 		{
 			if (row[pp].collide)
 				continue;
@@ -112,7 +115,8 @@ TOTAL extra bytes:
 void resolve_interbands_collision(Row &row, Row &from_other, std::vector<pcord_t *> band, std::vector<short> &invalids)
 {
 	int ninvalids = invalids.size();
-	for (unsigned pp = 0; pp < from_other.size(); pp++)
+	unsigned pp;
+	for (pp = 0; pp < from_other.size(); pp++)
 	{
 		for (pcord_t *part : band)
 		{
@@ -142,7 +146,8 @@ float move_and_collide_with_wall(Row &row, cord_t const &wall)
 {
 	float pressure{0};
 	// move particles that has not collided with another
-	for (unsigned p = 0; p < row.size(); p++)
+	unsigned p;
+	for (p = 0; p < row.size(); p++)
 		if (not row[p].collide)
 		{
 			feuler(&row[p], 1);
@@ -229,8 +234,8 @@ int main(int argc, char **argv)
 	float top_y = 0;
 	float bot_y = 0;
 	float local_pressure{0};
-
-	for (unsigned time_stamp = 0; time_stamp < time_max; time_stamp++)
+	unsigned time_stamp;
+	for (time_stamp = 0; time_stamp < time_max; time_stamp++)
 	{
 		if (time_stamp == 0)
 		{
