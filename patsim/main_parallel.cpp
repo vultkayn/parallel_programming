@@ -2,7 +2,7 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
-#include <list>
+#include <unordered_set>
 #include <cmath>
 #include "mpi.h"
 
@@ -38,26 +38,19 @@ void generate_particules(Row &row, int rank, int world_size, float &top, float &
 		float a = mine::rand1() * 2 * PI;
 		part.vx = r * cos(a);
 		part.vy = r * sin(a);
+		part.collide = 0;
 		row.push_back(part);
-
-#ifdef DEBUG
-		for (int i = 0; i < row_nb; i++)
-		{
-			std::cerr << "Row " << i + 1 << ":" << std::endl;
-			std::cerr << tab[i + 1] << std::endl;
-		}
-#endif
 	}
 }
 
 // P = world_size, W = BOX_HORIZ_SIZE, N = INIT_NO_PARTICLES
 // return bottom-most band (minus some that did collide)
 void collide_within_oneself(Row &row,													// = N / P
-														std::vector<pcord_t *> &top_band, // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
-														std::vector<pcord_t *> &bot_band, // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
+														std::vector<short> &top_band, // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
+														std::vector<short> &bot_band, // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
 														Row &leaving_top,									// = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
 														Row &leaving_bot,									// = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
-														std::vector<short> &invalids,			// = nb_elems(leaving_top + leaving_bot) = 50N / W
+														std::unordered_set<short> &invalids,			// = nb_elems(leaving_top + leaving_bot) = 50N / W
 														float box_top_y, float box_bottom_y)
 /*
 TOTAL extra bytes:
@@ -85,6 +78,7 @@ TOTAL extra bytes:
 				break; // only check collision of two particles
 			}
 		}
+
 		if (not part.collide)
 		{
 			float moved_y = part.y + part.vy;
@@ -93,48 +87,54 @@ TOTAL extra bytes:
 				if (moved_y > box_bottom_y)
 				{
 					leaving_bot.push_back(part);
-					invalids.push_back(p);
+					invalids.insert(p);
 				}
-				else
-					bot_band.push_back(&row[p]);
+				else if (invalids.find(p) == invalids.end()) {
+					bot_band.push_back(p);
+					#ifdef DEBUG
+					if (part.y > box_bottom_y)
+						std::cout << part.y << " out of bot_band " << box_bottom_y << std::endl; 
+					#endif
+				}
 			}
 			else if (part.y <= (box_top_y + 50.f))
 			{
 				if (moved_y < box_top_y)
 				{
 					leaving_top.push_back(part);
-					invalids.push_back(p);
+					invalids.insert(p);
 				}
-				else
-					top_band.push_back(&row[p]);
+				else if (invalids.find(p) == invalids.end()) // TODO using set is potentially better than linked list, needs measurement
+					top_band.push_back(p);
 			}
 		}
 	}
 }
 
-void resolve_interbands_collision(Row &row, Row &from_other, std::vector<pcord_t *> band, std::vector<short> &invalids)
+void resolve_interbands_collision(Row &row, Row &from_other, std::vector<short> const& band, std::unordered_set<short> &invalids)
 {
 	int ninvalids = invalids.size();
 	unsigned pp;
 	for (pp = 0; pp < from_other.size(); pp++)
 	{
-		for (pcord_t *part : band)
+		for (short idx : band)
 		{
-			if (part->collide)
+			if (row[idx].collide)
 				continue;
-			float t = collide(part, &from_other[pp]);
+			float t = collide(&row[idx], &from_other[pp]);
 			if (t != -1)
 			{ // collision
-				part->collide = from_other[pp].collide = true;
-				interact(part, &from_other[pp], t);
+				row[idx].collide = from_other[pp].collide = true;
+				interact(&row[idx], &from_other[pp], t);
 				break; // only check collision of two particles
 			}
 		}
 		// insert incoming particle into current processor row.
 		if (ninvalids)
 		{
-			row[invalids.back()] = from_other[pp];
-			invalids.pop_back();
+			auto first_it {invalids.begin()};
+			row[*first_it] = from_other[pp];
+			invalids.erase(first_it);
 			ninvalids--;
 		}
 		else // No invalid room left
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 			std::cerr << "For example: " << argv[0] << " 10" << std::endl;
 			exit(1);
 		}
-		time_max = std::atoi(argv[1]); // FIXME broadcast time_max.
+		time_max = std::atoi(argv[1]);
 	}
 
 	MPI_Bcast(&time_max, 1, MPI_FLOAT, 0, MPI_COMM_WORLD); // send time_max to all
@@ -225,12 +225,12 @@ int main(int argc, char **argv)
 	wall.y0 = wall.x0 = 0;
 	wall.x1 = BOX_HORIZ_SIZE;
 	wall.y1 = BOX_VERT_SIZE;
-	std::srand(std::time(NULL) + 1234);
+	std::srand(std::time(NULL) + 1234 + my_id);
 
 	// 2. allocate particle bufer and initialize the particles
 
 	Row row{};
-	std::vector<short> invalids{};
+	std::unordered_set<short> invalids{};
 	float top_y = 0;
 	float bot_y = 0;
 	float local_pressure{0};
@@ -240,14 +240,19 @@ int main(int argc, char **argv)
 		if (time_stamp == 0)
 		{
 			generate_particules(row, my_id, world_size, top_y, bot_y, wall);
+			#ifdef DEBUG
+			std::cout << "proc#" << my_id << " (top, bot)=(" << top_y << ',' << bot_y << ')' << std::endl;  
+			#endif
 		}
-
+		else // reset collisions
+			for (auto &part: row)
+				part.collide = false;
 		// vector of pointer is more performant than a list since don't have to allocate at every pointer.
 		/* vector of pointer is also better than vector of indices, since it reduces by 1 the number of indirection.
 		indeed: indirections for vector<short> v, accessing 'int index = v[i]'
 		*/
-		std::vector<pcord_t *> top_band{};
-		std::vector<pcord_t *> bot_band{};
+		std::vector<short> top_band{};
+		std::vector<short> bot_band{};
 		{ // Scope leaving_top and leaving_bot so their storage is released as soon as possible
 			Row leaving_bot{};
 			Row leaving_top{};
@@ -280,16 +285,16 @@ int main(int argc, char **argv)
 		if (my_id < world_size - 1) // receive from processor below
 		{
 			unsigned short size;
-			MPI_Recv(&size, 1, MPI_UNSIGNED_SHORT, my_id - 1, my_id + 0, MPI_COMM_WORLD, &status);
+			MPI_Recv(&size, 1, MPI_UNSIGNED_SHORT, my_id + 1, my_id + 0, MPI_COMM_WORLD, &status);
 			Row from_below(size);
-			MPI_Recv(from_below.data(), size, MPI_PARTICLES, my_id - 1, my_id + 1, MPI_COMM_WORLD, &status);
+			MPI_Recv(from_below.data(), size, MPI_PARTICLES, my_id + 1, my_id + 1, MPI_COMM_WORLD, &status);
 			resolve_interbands_collision(row, from_below, bot_band, invalids);
 		}
 
 		local_pressure += move_and_collide_with_wall(row, wall); // move all remaining
 	}
 
-	float pressure;
+	float pressure {0};
 	MPI_Reduce(&local_pressure, &pressure, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 	if (my_id == 0)
 		std::cout << "Average pressure = " << pressure / (WALL_LENGTH * time_max) << '\n'

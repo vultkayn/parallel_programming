@@ -2,7 +2,7 @@
 #include <ctime>
 #include <iostream>
 #include <cmath>
-#include <array>
+#include <vector>
 
 #include "coordinate.h"
 #include "definitions.h"
@@ -20,10 +20,10 @@ int main(int argc, char **argv)
 	float pressure = 0;
 
 	// parse arguments
-	if (argc != 2)
+	if (argc != 3)
 	{
-		std::cerr << "Usage: " << argv[0] << " simulation_time" << std::endl;
-		std::cerr << "For example: " << argv[0] << " 10" << std::endl;
+		std::cerr << "Usage: " << argv[0] << " simulation_time nb_procs" << std::endl;
+		std::cerr << "For example: " << argv[0] << " 10 64" << std::endl;
 		exit(1);
 	}
 
@@ -36,10 +36,10 @@ int main(int argc, char **argv)
 	wall.x1 = BOX_HORIZ_SIZE;
 	wall.y1 = BOX_VERT_SIZE;
 
+	const long TOTAL_NO_PARTICLES = INIT_NO_PARTICLES * std::atoi(argv[2]);
 	// 2. allocate particle bufer and initialize the particles
-	std::array<pcord_t, INIT_NO_PARTICLES> particles{};
-	std::array<bool, INIT_NO_PARTICLES> collisions{};
-	collisions.fill(false);
+	std::vector<pcord_t> particles(TOTAL_NO_PARTICLES);
+	std::vector<bool> collisions(TOTAL_NO_PARTICLES, false);
 
 	std::srand(std::time(NULL) + 1234);
 
@@ -59,15 +59,16 @@ int main(int argc, char **argv)
 	/* Main loop */
 	for (unsigned time_stamp = 0; time_stamp < time_max; time_stamp++)
 	{ // for each time stamp
-		collisions.fill(false);
+		for (size_t i=0; i < collisions.size(); i++)
+			collisions[i] = false;
 
-		for (unsigned p = 0; p < INIT_NO_PARTICLES; p++)
+		for (unsigned p = 0; p < TOTAL_NO_PARTICLES; p++)
 		{ // for all particles
 			if (collisions[p])
 				continue;
 
 			/* check for collisions */
-			for (unsigned pp = p + 1; pp < INIT_NO_PARTICLES; pp++)
+			for (unsigned pp = p + 1; pp < TOTAL_NO_PARTICLES; pp++)
 			{
 				if (collisions[pp])
 					continue;
@@ -82,7 +83,7 @@ int main(int argc, char **argv)
 		}
 
 		// move particles that has not collided with another
-		for (unsigned p = 0; p < INIT_NO_PARTICLES; p++)
+		for (unsigned p = 0; p < TOTAL_NO_PARTICLES; p++)
 			if (!collisions[p])
 			{
 				feuler(&particles[p], 1);
