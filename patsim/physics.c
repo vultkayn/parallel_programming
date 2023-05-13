@@ -14,7 +14,7 @@
 
 int feuler(pcord_t *a, float time_step){
     a->x = a->x + time_step* a->vx ;
-    a->y = a->y + time_step* a->vy ;	    
+    a->y = a->y + time_step* a->vy ;    
     return 0 ;
 }
 
