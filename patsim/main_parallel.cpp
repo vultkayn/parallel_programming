@@ -57,7 +57,7 @@ TOTAL extra bytes:
 = sizeof(short)*(50N/W) + 2*sizeof(pointer)*(50N / 2W) + 2*sizeof(pcord_t) * (50N / 2W)
 */
 {
-	int p;
+	unsigned p;
 	for (p = 0; p < row.size(); p++)
 	{
 		auto &part{row[p]};
@@ -231,6 +231,13 @@ int main(int argc, char **argv)
 	float bot_y = 0;
 	float local_pressure{0};
 	unsigned time_stamp;
+	
+	double stime, etime;
+	if(my_id==0)
+	{
+	    stime = MPI_Wtime();
+	}
+	
 	for (time_stamp = 0; time_stamp < time_max; time_stamp++)
 	{
 		if (time_stamp == 0)
@@ -293,9 +300,12 @@ int main(int argc, char **argv)
 	float pressure {0};
 	MPI_Reduce(&local_pressure, &pressure, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 	if (my_id == 0)
-		std::cout << "Average pressure = " << pressure / (WALL_LENGTH * time_max) << '\n'
-							<< std::endl;
-
+	{
+		std::cout << "Average pressure = " << pressure / (WALL_LENGTH * time_max) << std::endl;
+		
+		etime = MPI_Wtime();
+		std::cout << "Computation Time: " << (etime  - stime) << " secs" << std::endl;
+	}
 	MPI_Finalize();
 
 	return 0;

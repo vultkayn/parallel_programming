@@ -10,9 +10,35 @@
 
 // Feel free to change this program to facilitate parallelization.
 
-float rand1()
+namespace mine
 {
-	return (float)(rand() / (float)RAND_MAX);
+	float rand1()
+	{
+		return (float)(rand() / (float)RAND_MAX);
+	}
+}
+
+pcord_t generate_particules(int rank, int world_size, float &top, float &bot, cord_t const &wall)
+{
+	float height = BOX_VERT_SIZE / (float)world_size;
+	top = height * (float)rank;
+	bot = top + height;
+	int i;
+	for (i = 0; i < INIT_NO_PARTICLES; i++)
+	{
+		// initialize random position
+		pcord_t part;
+		part.x = wall.x0 + mine::rand1() * BOX_HORIZ_SIZE;
+		float dy = mine::rand1() * height;
+		part.y = top + dy;
+		// initialize random velocity
+		float r = mine::rand1() * MAX_INITIAL_VELOCITY;
+		float a = mine::rand1() * 2 * PI;
+		part.vx = r * cos(a);
+		part.vy = r * sin(a);
+		part.collide = 0;
+		return part;
+	}
 }
 
 int main(int argc, char **argv)
@@ -38,23 +64,38 @@ int main(int argc, char **argv)
 
 	const long TOTAL_NO_PARTICLES = INIT_NO_PARTICLES * std::atoi(argv[2]);
 	// 2. allocate particle bufer and initialize the particles
-	std::vector<pcord_t> particles(TOTAL_NO_PARTICLES);
+	// std::vector<pcord_t> particles(TOTAL_NO_PARTICLES);
+	std::vector<pcord_t> particles;
 	std::vector<bool> collisions(TOTAL_NO_PARTICLES, false);
 
 	std::srand(std::time(NULL) + 1234);
+	
+	struct timespec stime, etime;
+    	clock_gettime(CLOCK_REALTIME, &stime);
+	
+	float top_y = 0;
+	float bot_y = 0;
 
-	for (auto &particle : particles)
+	for (int my_id=0;my_id<std::atoi(argv[2]);my_id++)
 	{
-		// initialize random position
-		particle.x = wall.x0 + rand1() * BOX_HORIZ_SIZE;
-		particle.y = wall.y0 + rand1() * BOX_VERT_SIZE;
-
-		// initialize random velocity
-		float r = rand1() * MAX_INITIAL_VELOCITY;
-		float a = rand1() * 2 * PI;
-		particle.vx = r * std::cos(a);
-		particle.vy = r * std::sin(a);
+	    for (int i=0;i<INIT_NO_PARTICLES;i++)
+	    {
+	        particles.push_back(generate_particules(my_id, std::atoi(argv[2]), top_y, bot_y, wall));
+	    }
 	}
+
+//	for (auto &particle : particles)
+//	{
+//		// initialize random position
+//		particle.x = wall.x0 + rand1() * BOX_HORIZ_SIZE;
+//		particle.y = wall.y0 + rand1() * BOX_VERT_SIZE;
+//
+//		// initialize random velocity
+//		float r = rand1() * MAX_INITIAL_VELOCITY;
+//		float a = rand1() * 2 * PI;
+//		particle.vx = r * std::cos(a);
+//		particle.vy = r * std::sin(a);
+//	}
 
 	/* Main loop */
 	for (unsigned time_stamp = 0; time_stamp < time_max; time_stamp++)
@@ -94,6 +135,9 @@ int main(int argc, char **argv)
 	}
 
 	std::cout << "Average pressure = " << pressure / (WALL_LENGTH * time_max) << std::endl;
+	
+	clock_gettime(CLOCK_REALTIME, &etime);
+    	std::cout << "Computation Time: " << (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec - stime.tv_nsec) << " secs" << std::endl;
 
 	return 0;
 }

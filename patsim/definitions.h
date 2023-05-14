@@ -11,7 +11,7 @@
 
 #define MAX_NO_PARTICLES  15000  /* Maximum number of particles/processor */
 #ifndef INIT_NO_PARTICLES
-#define INIT_NO_PARTICLES 5000    /* Initial number of particles/processor */
+#define INIT_NO_PARTICLES 500  /* Initial number of particles/processor */
 #endif
 #define MAX_INITIAL_VELOCITY 50
 

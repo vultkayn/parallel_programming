@@ -1,7 +1,0 @@
-
-parallel:49618 terminated with signal 11 at PC=55fe2e218748 SP=7fff6f7cfe60.  Backtrace:
-./parallel(+0x4748)[0x55fe2e218748]
-./parallel(+0x3078)[0x55fe2e217078]
-/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7fa272629d90]
-/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7fa272629e40]
-./parallel(+0x3e25)[0x55fe2e217e25]
