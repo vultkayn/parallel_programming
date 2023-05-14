@@ -23,8 +23,8 @@ namespace mine
 void generate_particules(Row &row, int rank, int world_size, float &top, float &bot, cord_t const &wall)
 {
 	float height = BOX_VERT_SIZE / (float)world_size;
-	top = height * (float)rank;
-	bot = top + height;
+	bot = height * (float)rank;
+	top = bot + height;
 	int i;
 	for (i = 0; i < INIT_NO_PARTICLES; i++)
 	{
@@ -32,7 +32,7 @@ void generate_particules(Row &row, int rank, int world_size, float &top, float &
 		pcord_t part;
 		part.x = wall.x0 + mine::rand1() * BOX_HORIZ_SIZE;
 		float dy = mine::rand1() * height;
-		part.y = top + dy;
+		part.y = bot + dy;
 		// initialize random velocity
 		float r = mine::rand1() * MAX_INITIAL_VELOCITY;
 		float a = mine::rand1() * 2 * PI;
@@ -61,7 +61,7 @@ TOTAL extra bytes:
 	for (p = 0; p < row.size(); p++)
 	{
 		auto &part{row[p]};
-		if (part.collide)
+		if (part.collide or invalids.find(p) != invalids.end())
 			continue;
 
 		/* check for collisions */
@@ -75,36 +75,32 @@ TOTAL extra bytes:
 			{ // collision
 				part.collide = row[pp].collide = true;
 				interact(&part, &row[pp], t);
-				break; // only check collision of two particles
+				break; // only check collision of two particles 
 			}
 		}
 
 		if (not part.collide)
 		{
 			float moved_y = part.y + part.vy;
-			if (part.y >= box_bottom_y - 50.f)
+      if (moved_y < box_bottom_y)
+      {
+        leaving_bot.push_back(part);
+        invalids.insert(p);
+      }
+			else if (part.y <= box_bottom_y + 50.f)
 			{
-				if (moved_y > box_bottom_y)
-				{
-					leaving_bot.push_back(part);
-					invalids.insert(p);
-				}
-				else if (invalids.find(p) == invalids.end()) {
+				if (invalids.find(p) == invalids.end()) {
 					bot_band.push_back(p);
-					#ifdef DEBUG
-					if (part.y > box_bottom_y)
-						std::cout << part.y << " out of bot_band " << box_bottom_y << std::endl; 
-					#endif
 				}
 			}
-			else if (part.y <= (box_top_y + 50.f))
+      else if (moved_y > box_top_y)
+      {
+        leaving_top.push_back(part);
+        invalids.insert(p);
+      }
+			else if (part.y >= (box_top_y - 50.f))
 			{
-				if (moved_y < box_top_y)
-				{
-					leaving_top.push_back(part);
-					invalids.insert(p);
-				}
-				else if (invalids.find(p) == invalids.end()) // TODO using set is potentially better than linked list, needs measurement
+				if (invalids.find(p) == invalids.end()) // TODO using set is potentially better than linked list, needs measurement
 					top_band.push_back(p);
 			}
 		}
