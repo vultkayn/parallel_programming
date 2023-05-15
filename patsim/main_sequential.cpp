@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	std::vector<pcord_t> particles(TOTAL_NO_PARTICLES);
 	std::vector<bool> collisions(TOTAL_NO_PARTICLES, false);
 
-	std::srand(std::time(NULL) + 1234);
+	std::srand(1234);
 
 	for (auto &particle : particles)
 	{

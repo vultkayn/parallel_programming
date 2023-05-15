@@ -20,7 +20,7 @@ namespace mine
 	}
 }
 
-void generate_particles(std::list<pcord_t> &row, int rank, int world_size, float &top, float &bot, cord_t const &wall)
+void generate_particles(Row &row, int rank, int world_size, float &top, float &bot, cord_t const &wall)
 {
 	float height = BOX_VERT_SIZE / (float)world_size;
 	bot = height * (float)rank;
@@ -45,10 +45,11 @@ void generate_particles(std::list<pcord_t> &row, int rank, int world_size, float
 
 // P = world_size, W = BOX_HORIZ_SIZE, N = INIT_NO_PARTICLES
 // return bottom-most band (minus some that did collide)
-void collide_within_oneself(std::list<pcord_t> &row,														 // = N / P
-														std::vector<pcord_t *> &upper_band,			 // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
-														std::vector<pcord_t *> &lower_band,			 // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
+void collide_within_oneself(Row &row,														 // = N / P
+														std::vector<int> &upper_band,			 // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
+														std::vector<int> &lower_band,			 // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
 														Row &leaving_top,										 // = 0.5 * [50W / (W²/P)] * N / P = 50N / 2W
+														std::unordered_set<int> &invalids, // = nb_elems(leaving_top + leaving_bot) = 50N / W
 														float top_y, float bot_y,
 														int rank, int world_size)
 /*
@@ -56,15 +57,16 @@ TOTAL extra bytes:
 = sizeof(int)*(50N/W) + 2*sizeof(pointer)*(50N / 2W) + 2*sizeof(pcord_t) * (50N / 2W)
 */
 {
-	for (auto it = row.begin(); it != row.end(); )
+	int p;
+	for (p = 0; p < row.size(); p++)
 	{
-		auto &part{*it};
-		if (part.collide)
+		auto &part{row[p]};
+		if (part.collide or invalids.find(p) != invalids.end())
 			continue;
 
 		/* check for collisions */
-		auto iit = it;
-		for (iit++; pp < row.size(); pp++)
+		unsigned pp;
+		for (pp = p + 1; pp < row.size(); pp++)
 		{
 			if (row[pp].collide or invalids.find(pp) != invalids.end())
 				continue;
@@ -270,7 +272,7 @@ int main(int argc, char **argv)
 
 	// 2. allocate particle bufer and initialize the particles
 
-	std::list<pcord_t> row(100 + INIT_NO_PARTICLES / world_size);
+	Row row{};
 	std::unordered_set<int> invalids{};
 	float top_y = 0;
 	float bot_y = 0;
@@ -305,10 +307,12 @@ int main(int argc, char **argv)
 				unsigned target_rank = my_id + 1;
 				int size = leaving_top.size();
 				MPI_Request req1, req2;
-				MPI_Isend(&size, 1, MPI_INT, target_rank, target_rank + 0, MPI_COMM_WORLD, &req1);
-				MPI_Request_free(&req1);
-				MPI_Isend(leaving_top.data(), leaving_top.size(), MPI_PARTICLES, target_rank, target_rank + 1, MPI_COMM_WORLD, &req2);
-				MPI_Request_free(&req2);
+				MPI_Send(&size, 1, MPI_INT, target_rank, target_rank + 0, MPI_COMM_WORLD);
+				// MPI_Isend(&size, 1, MPI_INT, target_rank, target_rank + 0, MPI_COMM_WORLD, &req1);
+				// MPI_Request_free(&req1);
+				MPI_Send(leaving_top.data(), leaving_top.size(), MPI_PARTICLES, target_rank, target_rank + 1, MPI_COMM_WORLD);
+				// MPI_Isend(leaving_top.data(), leaving_top.size(), MPI_PARTICLES, target_rank, target_rank + 1, MPI_COMM_WORLD, &req2);
+				// MPI_Request_free(&req2);
 			}
 			if (my_id > 0) // recv particles from processor below
 			{
@@ -325,10 +329,12 @@ int main(int argc, char **argv)
 			unsigned target_rank = my_id - 1;
 			int size = leaving_bot.size();
 			MPI_Request req1, req2;
-			MPI_Isend(&size, 1, MPI_INT, target_rank, target_rank + 2, MPI_COMM_WORLD, &req1);
-			MPI_Request_free(&req1);
-			MPI_Isend(leaving_bot.data(), leaving_bot.size(), MPI_PARTICLES, target_rank, target_rank + 3, MPI_COMM_WORLD, &req2);
-			MPI_Request_free(&req2);
+			MPI_Send(&size, 1, MPI_INT, target_rank, target_rank + 2, MPI_COMM_WORLD);
+			// MPI_Isend(&size, 1, MPI_INT, target_rank, target_rank + 2, MPI_COMM_WORLD, &req1);
+			// MPI_Request_free(&req1);
+			MPI_Send(leaving_bot.data(), leaving_bot.size(), MPI_PARTICLES, target_rank, target_rank + 3, MPI_COMM_WORLD);
+			// MPI_Isend(leaving_bot.data(), leaving_bot.size(), MPI_PARTICLES, target_rank, target_rank + 3, MPI_COMM_WORLD, &req2);
+			// MPI_Request_free(&req2);
 		}
 		if (my_id < world_size - 1) // receive from processor above
 		{
